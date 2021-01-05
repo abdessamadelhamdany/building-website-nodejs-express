@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const cookieSession = require('cookie-session');
+const createError = require('http-errors');
 
 const FeedbackService = require('./services/FeedbackService');
 const SpeakerService = require('./services/SpeakerService');
@@ -24,8 +25,30 @@ app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, './views'));
 
+app.locals.siteName = 'Roux Meetups';
+
 app.use(express.static(path.join(__dirname, './static')));
+app.use(async (req, res, next) => {
+  try {
+    const names = await speakerService.getNames();
+    res.locals.speakerNames = names;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
 app.use('/', routes({ feedbackService, speakerService }));
+
+app.use((req, res, next) => next(createError(404, 'The page you requested was not found.')));
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.locals.message = err.message;
+  const status = err.status || 500;
+  res.locals.status = status;
+  res.status(status);
+  res.render('error');
+});
 
 app.listen(port, () => {
   console.log(`Server is listening on port ${port}`);
