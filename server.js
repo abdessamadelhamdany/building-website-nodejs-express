@@ -2,6 +2,7 @@ const path = require('path');
 const express = require('express');
 const cookieSession = require('cookie-session');
 const createError = require('http-errors');
+const bodyParser = require('body-parser');
 
 const FeedbackService = require('./services/FeedbackService');
 const SpeakerService = require('./services/SpeakerService');
@@ -14,6 +15,7 @@ const routes = require('./routes');
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
 app.use(
   cookieSession({
     name: 'session',
@@ -21,7 +23,8 @@ app.use(
   })
 );
 
-app.set('trust proxy', 1);
+app.use(bodyParser.urlencoded({ extended: true }));
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, './views'));
 
@@ -43,11 +46,8 @@ app.use((req, res, next) => next(createError(404, 'The page you requested was no
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.locals.message = err.message;
-  const status = err.status || 500;
-  res.locals.status = status;
-  res.status(status);
-  res.render('error');
+  const { status = 500, message } = err;
+  return res.render('error', { status, message });
 });
 
 app.listen(port, () => {
